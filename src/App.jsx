@@ -219,6 +219,24 @@ export default function App() {
       {/* Result card */}
       {result && !loading && <ResultCard data={result} />}
 
+      {/* Publisher warning */}
+      {result && !loading && (() => {
+        const p = (result.publisher || "").toLowerCase();
+        const j = (result.journal || "").toLowerCase();
+        const isMDPI = p.includes("mdpi") || p.includes("multidisciplinary digital publishing");
+        const isFrontiers = p.includes("frontiers") || j.startsWith("frontiers in ");
+        if (!isMDPI && !isFrontiers) return null;
+        const label = isMDPI ? "MDPI" : "Frontiers";
+        return (
+          <div style={{
+            background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10,
+            padding: "12px 16px", marginTop: 10, fontSize: 13, color: "#92400e",
+          }}>
+            Note: the journal you are checking is <b>{label}</b>.
+          </div>
+        );
+      })()}
+
       {/* History */}
       {history.length > 0 && !loading && (
         <div style={{ marginTop: 24 }}>
