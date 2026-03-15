@@ -334,15 +334,7 @@ export default function App() {
         >
           Clarivate JCR
         </a>{" "}
-        (2024) &middot;{" "}
-        <a
-          href="https://jilai.dev"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: "#6b7280" }}
-        >
-          JIL Lab
-        </a>
+        (2024)
       </div>
     </div>
   );
