@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const API_BASE = import.meta.env.VITE_JCR_API_URL || "https://jcr.jilai.dev";
+const EIF_API = import.meta.env.VITE_EIF_API_URL || "https://predict-if.jilai.dev";
 
 const Q_COLORS = {
   Q1: { color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
@@ -329,6 +330,9 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Predict-IF Section ── */}
+      <PredictIF />
+
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
@@ -343,7 +347,7 @@ export default function App() {
           color: "#9ca3af",
         }}
       >
-        Data from{" "}
+        Published IF from{" "}
         <a
           href="https://jcr.clarivate.com"
           target="_blank"
@@ -352,8 +356,497 @@ export default function App() {
         >
           Clarivate JCR
         </a>{" "}
-        (2024)
+        (2024) &middot; Estimated IF from{" "}
+        <a
+          href="https://www.webofscience.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#6b7280" }}
+        >
+          Web of Science
+        </a>{" "}
+        Citation Reports
       </div>
+    </div>
+  );
+}
+
+function PredictIF() {
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [eifStats, setEifStats] = useState(null);
+
+  const fetchEifStats = useCallback(async () => {
+    try {
+      const res = await fetch(`${EIF_API}/api/stats`);
+      if (res.ok) setEifStats(await res.json());
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchEifStats();
+  }, [fetchEifStats]);
+
+  const calculate = async () => {
+    const q = query.trim();
+    if (!q || loading) return;
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    setLogs([]);
+
+    try {
+      const res = await fetch(`${EIF_API}/api/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ journal: q }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setError(data.error);
+        setLoading(false);
+        return;
+      }
+
+      fetchEifStats();
+      const es = new EventSource(`${EIF_API}/api/stream/${data.job_id}`);
+      es.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "log") {
+          setLogs((prev) => [...prev, msg.message]);
+        } else if (msg.type === "done") {
+          es.close();
+          setResult(msg.result);
+          setHistory((prev) => {
+            const filtered = prev.filter(
+              (h) => h.journal !== msg.result.journal
+            );
+            return [msg.result, ...filtered].slice(0, 10);
+          });
+          setLoading(false);
+        } else if (msg.type === "error") {
+          es.close();
+          setError(msg.error);
+          setLoading(false);
+        }
+      };
+      es.onerror = () => {
+        es.close();
+        // fallback polling
+        const poll = setInterval(async () => {
+          try {
+            const r = await fetch(`${EIF_API}/api/status/${data.job_id}`);
+            const d = await r.json();
+            setLogs(d.logs || []);
+            if (d.status === "done") {
+              clearInterval(poll);
+              setResult(d.result);
+              setHistory((prev) => {
+                const filtered = prev.filter(
+                  (h) => h.journal !== d.result.journal
+                );
+                return [d.result, ...filtered].slice(0, 10);
+              });
+              setLoading(false);
+            } else if (d.status === "error") {
+              clearInterval(poll);
+              setError(d.error);
+              setLoading(false);
+            }
+          } catch {}
+        }, 2000);
+      };
+    } catch (err) {
+      setError(`Connection failed: ${err.message}`);
+      setLoading(false);
+    }
+  };
+
+  const inputStyle = {
+    fontFamily: "inherit",
+    fontSize: 15,
+    padding: "12px 16px",
+    border: "1px solid #d0d5dd",
+    borderRadius: 8,
+    outline: "none",
+    background: "#ffffff",
+    color: "#111118",
+  };
+
+  return (
+    <div style={{ marginTop: 48 }}>
+      {/* Divider */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 28,
+        }}
+      >
+        <div style={{ flex: 1, height: 1, background: "#e2e5ea" }} />
+        <span
+          style={{
+            fontSize: 11,
+            color: "#9ca3af",
+            letterSpacing: 1.5,
+            fontWeight: 700,
+          }}
+        >
+          ESTIMATE UPCOMING IF
+        </span>
+        <div style={{ flex: 1, height: 1, background: "#e2e5ea" }} />
+      </div>
+
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <h2
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            color: "#111118",
+            letterSpacing: -0.3,
+            marginBottom: 4,
+          }}
+        >
+          Predict-IF
+        </h2>
+        <p style={{ fontSize: 13, color: "#6b7280" }}>
+          預測2025年impact factor (7月會公布). 僅供預測, 不負任何保證責任, 以JCR 最後公布為準
+        </p>
+      </div>
+
+      {/* Search bar */}
+      <div
+        className="search-row"
+        style={{
+          background: "#fff",
+          border: "1px solid #e2e5ea",
+          borderRadius: 10,
+          padding: "12px 14px",
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        }}
+      >
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") calculate();
+          }}
+          placeholder="Exact WOS journal name (e.g. Oncogene)"
+          style={{ ...inputStyle, flex: 1, border: "1px solid #e2e5ea" }}
+        />
+        <button
+          onClick={calculate}
+          disabled={!query.trim() || loading}
+          style={{
+            ...inputStyle,
+            cursor: query.trim() && !loading ? "pointer" : "default",
+            background: query.trim() && !loading ? "#7c3aed" : "#e2e5ea",
+            color: query.trim() && !loading ? "#fff" : "#9ca3af",
+            border: "none",
+            fontWeight: 700,
+            letterSpacing: 1,
+            padding: "12px 20px",
+            transition: "all 0.15s",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {loading ? "..." : "ESTIMATE"}
+        </button>
+      </div>
+
+      {/* Usage counters */}
+      {eifStats && (
+        <div
+          className="stats-row"
+          style={{
+            display: "flex",
+            gap: 16,
+            marginBottom: 20,
+            flexWrap: "wrap",
+            fontSize: 12,
+            color: "#9ca3af",
+            justifyContent: "center",
+          }}
+        >
+          <span>
+            <b style={{ color: "#7c3aed", fontSize: 13 }}>
+              {eifStats.today.toLocaleString()}
+            </b>{" "}
+            guest{eifStats.today !== 1 ? "s" : ""} used this IF predictor today
+          </span>
+          <span className="stats-divider" style={{ color: "#d1d5db" }}>
+            |
+          </span>
+          <span>
+            Since running,{" "}
+            <b style={{ color: "#7c3aed", fontSize: 13 }}>
+              {eifStats.total.toLocaleString()}
+            </b>{" "}
+            guest{eifStats.total !== 1 ? "s" : ""} have used this IF predictor
+          </span>
+        </div>
+      )}
+
+      {/* Progress */}
+      {loading && (
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #e2e5ea",
+            borderRadius: 10,
+            padding: "48px 20px",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+            marginBottom: 12,
+            textAlign: "center",
+          }}
+        >
+          <div className="eif-spinner" style={{ margin: "0 auto 12px" }} />
+          <div style={{ fontSize: 15, color: "#6b7280" }}>Calculating...</div>
+          <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 6 }}>
+            This may take 30-60 seconds
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && !loading && (
+        <div
+          style={{
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            borderRadius: 10,
+            padding: "16px 20px",
+            color: "#dc2626",
+            fontSize: 14,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Result */}
+      {result && !loading && (
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #e2e5ea",
+            borderRadius: 10,
+            overflow: "hidden",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          }}
+        >
+          <div
+            style={{
+              padding: "20px 20px 16px",
+              borderBottom: "1px solid #f0f1f4",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: "#111118",
+                lineHeight: 1.3,
+              }}
+            >
+              {result.journal}
+            </div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
+              Estimated from WOS (2023-2024 publications, 2025 citations)
+            </div>
+          </div>
+          <div
+            className="metrics-grid eif-metrics"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              borderBottom: "1px solid #f0f1f4",
+            }}
+          >
+            <div
+              style={{
+                padding: "20px 24px",
+                borderRight: "1px solid #f0f1f4",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  letterSpacing: 1.5,
+                }}
+              >
+                ESTIMATED IF
+              </div>
+              <div
+                style={{
+                  fontSize: 42,
+                  fontWeight: 800,
+                  color: "#7c3aed",
+                  marginTop: 4,
+                }}
+              >
+                {result.eif.toFixed(2)}
+              </div>
+            </div>
+            <div
+              style={{
+                padding: "20px 24px",
+                borderRight: "1px solid #f0f1f4",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  letterSpacing: 1.5,
+                }}
+              >
+                PUBLICATIONS
+              </div>
+              <div
+                style={{
+                  fontSize: 32,
+                  fontWeight: 800,
+                  color: "#2563eb",
+                  marginTop: 4,
+                }}
+              >
+                {result.pub_count.toLocaleString()}
+              </div>
+            </div>
+            <div style={{ padding: "20px 24px" }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  letterSpacing: 1.5,
+                }}
+              >
+                CITATIONS 2025
+              </div>
+              <div
+                style={{
+                  fontSize: 32,
+                  fontWeight: 800,
+                  color: "#0891b2",
+                  marginTop: 4,
+                }}
+              >
+                {result.citations_2025.toLocaleString()}
+              </div>
+            </div>
+          </div>
+          <div
+            style={{
+              padding: "12px 20px",
+              fontFamily:
+                '"SF Mono", "Fira Code", Consolas, monospace',
+              fontSize: 13,
+              color: "#6b7280",
+              background: "#f9fafb",
+              textAlign: "center",
+            }}
+          >
+            {result.citations_2025.toLocaleString()} &divide;{" "}
+            {result.pub_count.toLocaleString()} = {result.eif.toFixed(2)}
+          </div>
+        </div>
+      )}
+
+      {/* eIF History */}
+      {history.length > 0 && !loading && (
+        <div style={{ marginTop: 16 }}>
+          <div
+            style={{
+              fontSize: 11,
+              color: "#9ca3af",
+              letterSpacing: 1.5,
+              marginBottom: 10,
+            }}
+          >
+            RECENT ESTIMATES
+          </div>
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #e2e5ea",
+              borderRadius: 10,
+              overflow: "hidden",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+            }}
+          >
+            <div
+              className="eif-history-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 70px 90px 60px",
+                padding: "10px 16px",
+                background: "#f9fafb",
+                borderBottom: "1px solid #e2e5ea",
+                fontSize: 11,
+                color: "#9ca3af",
+                letterSpacing: 1.5,
+                fontWeight: 700,
+              }}
+            >
+              <span>JOURNAL</span>
+              <span>eIF</span>
+              <span>CITATIONS</span>
+              <span>PUBS</span>
+            </div>
+            {history.map((h, i) => (
+              <div
+                key={i}
+                onClick={() => {
+                  setResult(h);
+                  setQuery(h.journal);
+                }}
+                className="eif-history-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 70px 90px 60px",
+                  padding: "10px 16px",
+                  borderBottom: "1px solid #f0f1f4",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#f9fafb")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <span style={{ fontWeight: 500, color: "#111118" }}>
+                  {h.journal}
+                </span>
+                <span style={{ fontWeight: 700, color: "#7c3aed" }}>
+                  {h.eif.toFixed(2)}
+                </span>
+                <span style={{ color: "#6b7280" }}>
+                  {h.citations_2025.toLocaleString()}
+                </span>
+                <span style={{ color: "#6b7280" }}>
+                  {h.pub_count.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
