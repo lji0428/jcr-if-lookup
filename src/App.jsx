@@ -330,6 +330,9 @@ export default function App() {
         </div>
       )}
 
+      {/* ── Journal Browser ── */}
+      <JournalBrowser />
+
       {/* ── Predict-IF Section ── */}
       <PredictIF />
 
@@ -367,6 +370,259 @@ export default function App() {
         </a>{" "}
         Citation Reports
       </div>
+    </div>
+  );
+}
+
+function JournalBrowser() {
+  const [search, setSearch] = useState("");
+  const [journals, setJournals] = useState(null);
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
+
+  useEffect(() => {
+    fetch("/journals.json")
+      .then((r) => r.json())
+      .then(setJournals)
+      .catch(() => {});
+  }, []);
+
+  const filtered = journals
+    ? search.trim()
+      ? journals.filter((j) =>
+          j.name.toLowerCase().includes(search.trim().toLowerCase())
+        )
+      : journals
+    : [];
+
+  const sorted = [...filtered].sort((a, b) => b.if - a.if);
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const pageData = sorted.slice(page * pageSize, (page + 1) * pageSize);
+
+  const inputStyle = {
+    fontFamily: "inherit",
+    fontSize: 15,
+    padding: "12px 16px",
+    border: "1px solid #d0d5dd",
+    borderRadius: 8,
+    outline: "none",
+    background: "#ffffff",
+    color: "#111118",
+  };
+
+  if (!journals) return null;
+
+  return (
+    <div style={{ marginTop: 48 }}>
+      {/* Divider */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 28,
+        }}
+      >
+        <div style={{ flex: 1, height: 1, background: "#e2e5ea" }} />
+        <span
+          style={{
+            fontSize: 11,
+            color: "#9ca3af",
+            letterSpacing: 1.5,
+            fontWeight: 700,
+          }}
+        >
+          BROWSE ALL JOURNALS
+        </span>
+        <div style={{ flex: 1, height: 1, background: "#e2e5ea" }} />
+      </div>
+
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <p style={{ fontSize: 13, color: "#6b7280" }}>
+          {journals.length.toLocaleString()} journals from 9 WOS categories
+          (JCR 2024)
+        </p>
+      </div>
+
+      {/* Search bar */}
+      <div
+        className="search-row"
+        style={{
+          background: "#fff",
+          border: "1px solid #e2e5ea",
+          borderRadius: 10,
+          padding: "12px 14px",
+          marginBottom: 12,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        }}
+      >
+        <input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
+          placeholder="Search by keyword (e.g. cancer, breast, AI)"
+          style={{ ...inputStyle, flex: 1, border: "1px solid #e2e5ea" }}
+        />
+        {search && (
+          <button
+            onClick={() => {
+              setSearch("");
+              setPage(0);
+            }}
+            style={{
+              ...inputStyle,
+              cursor: "pointer",
+              background: "#f3f4f6",
+              border: "1px solid #d0d5dd",
+              fontWeight: 700,
+              letterSpacing: 1,
+              padding: "12px 20px",
+              color: "#6b7280",
+              whiteSpace: "nowrap",
+            }}
+          >
+            CLEAR
+          </button>
+        )}
+      </div>
+
+      {/* Count */}
+      <div
+        style={{
+          fontSize: 12,
+          color: "#9ca3af",
+          marginBottom: 8,
+          textAlign: "center",
+        }}
+      >
+        {sorted.length.toLocaleString()} journal
+        {sorted.length !== 1 ? "s" : ""} found
+        {search.trim() ? ` for "${search.trim()}"` : ""} — sorted by IF
+      </div>
+
+      {/* Results table */}
+      {pageData.length > 0 && (
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #e2e5ea",
+            borderRadius: 10,
+            overflow: "hidden",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          }}
+        >
+          <div
+            className="browse-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 60px 44px",
+              padding: "10px 16px",
+              background: "#f9fafb",
+              borderBottom: "1px solid #e2e5ea",
+              fontSize: 11,
+              color: "#9ca3af",
+              letterSpacing: 1.5,
+              fontWeight: 700,
+            }}
+          >
+            <span>JOURNAL</span>
+            <span>IF</span>
+            <span>Q</span>
+          </div>
+          {pageData.map((j, i) => {
+            const qc = Q_COLORS[j.q] || { color: "#6b7280" };
+            return (
+              <div
+                key={`${j.name}-${j.cat}-${i}`}
+                className="browse-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 60px 44px",
+                  padding: "8px 16px",
+                  borderBottom: "1px solid #f0f1f4",
+                  fontSize: 13,
+                  alignItems: "center",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#f9fafb")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <span
+                  style={{
+                    fontWeight: 500,
+                    color: "#111118",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {j.name}
+                </span>
+                <span style={{ fontWeight: 700, color: "#2563eb" }}>
+                  {j.if}
+                </span>
+                <span style={{ fontWeight: 700, fontSize: 12, color: qc.color }}>
+                  {j.q}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 10,
+            fontSize: 13,
+            color: "#6b7280",
+          }}
+        >
+          <button
+            onClick={() => setPage(Math.max(0, page - 1))}
+            disabled={page === 0}
+            style={{
+              ...inputStyle,
+              fontSize: 13,
+              padding: "6px 14px",
+              cursor: page > 0 ? "pointer" : "default",
+              opacity: page === 0 ? 0.4 : 1,
+            }}
+          >
+            Prev
+          </button>
+          <span>
+            {page + 1} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+            disabled={page >= totalPages - 1}
+            style={{
+              ...inputStyle,
+              fontSize: 13,
+              padding: "6px 14px",
+              cursor: page < totalPages - 1 ? "pointer" : "default",
+              opacity: page >= totalPages - 1 ? 0.4 : 1,
+            }}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
