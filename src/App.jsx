@@ -79,21 +79,21 @@ export default function App() {
       style={{
         maxWidth: 640,
         margin: "0 auto",
-        padding: "40px 20px 60px",
+        padding: "24px 20px 60px",
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
       }}
     >
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
+      <div style={{ textAlign: "center", marginBottom: 16 }}>
         <h1
           style={{
-            fontSize: 28,
+            fontSize: 26,
             fontWeight: 800,
             color: "#111118",
             letterSpacing: -0.5,
-            marginBottom: 6,
+            marginBottom: 4,
           }}
         >
           JCR Impact Factor Lookup
@@ -155,7 +155,7 @@ export default function App() {
           style={{
             display: "flex",
             gap: 16,
-            marginBottom: 20,
+            marginBottom: 10,
             flexWrap: "wrap",
             fontSize: 12,
             color: "#9ca3af",
@@ -343,8 +343,8 @@ export default function App() {
       <div
         style={{
           textAlign: "center",
-          marginTop: 48,
-          paddingTop: 20,
+          marginTop: 32,
+          paddingTop: 16,
           borderTop: "1px solid #e2e5ea",
           fontSize: 12,
           color: "#9ca3af",
@@ -415,14 +415,14 @@ function JournalBrowser() {
   if (!journals) return null;
 
   return (
-    <div style={{ marginTop: 48 }}>
+    <div style={{ marginTop: 24 }}>
       {/* Divider */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 16,
-          marginBottom: 28,
+          marginBottom: 12,
         }}
       >
         <div style={{ flex: 1, height: 1, background: "#e2e5ea" }} />
@@ -440,14 +440,14 @@ function JournalBrowser() {
       </div>
 
       {/* Title + subtitle */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
+      <div style={{ textAlign: "center", marginBottom: 10 }}>
         <h2
           style={{
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: 800,
             color: "#111118",
             letterSpacing: -0.3,
-            marginBottom: 4,
+            marginBottom: 2,
           }}
         >
           Commonly Checked Journals
@@ -776,14 +776,14 @@ function PredictIF() {
   };
 
   return (
-    <div style={{ marginTop: 48 }}>
+    <div style={{ marginTop: 24 }}>
       {/* Divider */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 16,
-          marginBottom: 28,
+          marginBottom: 12,
         }}
       >
         <div style={{ flex: 1, height: 1, background: "#e2e5ea" }} />
@@ -801,10 +801,10 @@ function PredictIF() {
       </div>
 
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
+      <div style={{ textAlign: "center", marginBottom: 10 }}>
         <h2
           style={{
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: 800,
             color: "#111118",
             letterSpacing: -0.3,
