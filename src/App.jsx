@@ -378,6 +378,7 @@ function JournalBrowser() {
   const [search, setSearch] = useState("");
   const [journals, setJournals] = useState(null);
   const [page, setPage] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const pageSize = 20;
 
   useEffect(() => {
@@ -397,9 +398,12 @@ function JournalBrowser() {
       : [];
 
   const sorted = [...filtered].sort((a, b) => b.if - a.if);
-  const totalPages = Math.ceil(sorted.length / pageSize);
-  const pageData = sorted.slice(page * pageSize, (page + 1) * pageSize);
-  const showMax5 = sorted.length <= 5;
+  const showPreview = !expanded && sorted.length > 5;
+  const visibleData = showPreview ? sorted.slice(0, 5) : sorted;
+  const totalPages = expanded ? Math.ceil(sorted.length / pageSize) : 1;
+  const pageData = expanded
+    ? sorted.slice(page * pageSize, (page + 1) * pageSize)
+    : visibleData;
 
   const inputStyle = {
     fontFamily: "inherit",
@@ -481,6 +485,7 @@ function JournalBrowser() {
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(0);
+            setExpanded(false);
           }}
           placeholder="Type to search (e.g. cancer, breast, AI, lancet)"
           style={{ ...inputStyle, flex: 1, border: "1px solid #e2e5ea" }}
@@ -490,6 +495,7 @@ function JournalBrowser() {
             onClick={() => {
               setSearch("");
               setPage(0);
+              setExpanded(false);
             }}
             style={{
               ...inputStyle,
@@ -540,7 +546,7 @@ function JournalBrowser() {
                 className="browse-grid"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 60px 44px",
+                  gridTemplateColumns: "1fr 54px 70px 40px",
                   padding: "10px 16px",
                   background: "#f9fafb",
                   borderBottom: "1px solid #e2e5ea",
@@ -552,6 +558,7 @@ function JournalBrowser() {
               >
                 <span>JOURNAL</span>
                 <span>IF</span>
+                <span>RANK</span>
                 <span>Q</span>
               </div>
               {pageData.map((j, i) => {
@@ -562,7 +569,7 @@ function JournalBrowser() {
                     className="browse-grid"
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 60px 44px",
+                      gridTemplateColumns: "1fr 54px 70px 40px",
                       padding: "8px 16px",
                       borderBottom: "1px solid #f0f1f4",
                       fontSize: 13,
@@ -590,6 +597,9 @@ function JournalBrowser() {
                     <span style={{ fontWeight: 700, color: "#2563eb" }}>
                       {j.if}
                     </span>
+                    <span style={{ fontSize: 12, color: "#6b7280" }}>
+                      {j.rank}
+                    </span>
                     <span
                       style={{
                         fontWeight: 700,
@@ -602,6 +612,30 @@ function JournalBrowser() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Show all button when preview is truncated */}
+          {showPreview && (
+            <div style={{ textAlign: "center", marginTop: 8 }}>
+              <button
+                onClick={() => {
+                  setExpanded(true);
+                  setPage(0);
+                }}
+                style={{
+                  ...inputStyle,
+                  fontSize: 13,
+                  padding: "6px 16px",
+                  cursor: "pointer",
+                  background: "#f3f4f6",
+                  border: "1px solid #d0d5dd",
+                  color: "#4b5563",
+                  fontWeight: 600,
+                }}
+              >
+                Show all {sorted.length} results
+              </button>
             </div>
           )}
 
@@ -618,8 +652,8 @@ function JournalBrowser() {
             </div>
           )}
 
-          {/* Pagination — only if more than 5 results */}
-          {!showMax5 && totalPages > 1 && (
+          {/* Pagination — only when expanded */}
+          {expanded && totalPages > 1 && (
             <div
               style={{
                 display: "flex",
