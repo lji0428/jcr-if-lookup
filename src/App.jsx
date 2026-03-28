@@ -387,17 +387,19 @@ function JournalBrowser() {
       .catch(() => {});
   }, []);
 
-  const filtered = journals
-    ? search.trim()
+  const hasSearch = search.trim().length > 0;
+
+  const filtered =
+    journals && hasSearch
       ? journals.filter((j) =>
           j.name.toLowerCase().includes(search.trim().toLowerCase())
         )
-      : journals
-    : [];
+      : [];
 
   const sorted = [...filtered].sort((a, b) => b.if - a.if);
   const totalPages = Math.ceil(sorted.length / pageSize);
   const pageData = sorted.slice(page * pageSize, (page + 1) * pageSize);
+  const showMax5 = sorted.length <= 5;
 
   const inputStyle = {
     fontFamily: "inherit",
@@ -437,10 +439,25 @@ function JournalBrowser() {
         <div style={{ flex: 1, height: 1, background: "#e2e5ea" }} />
       </div>
 
+      {/* Title + subtitle */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: "#6b7280" }}>
-          {journals.length.toLocaleString()} journals from 9 WOS categories
-          (JCR 2024)
+        <h2
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            color: "#111118",
+            letterSpacing: -0.3,
+            marginBottom: 4,
+          }}
+        >
+          Commonly Checked Journals
+        </h2>
+        <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
+          Quick search across {journals.length.toLocaleString()} journals in
+          Oncology, Cell Biology, Biochemistry &amp; Molecular Biology,
+          Medicine (General &amp; Internal), Medicine (Research &amp;
+          Experimental), CS &amp; AI, CS Interdisciplinary, Multidisciplinary
+          Sciences, and Mathematical &amp; Computational Biology
         </p>
       </div>
 
@@ -465,10 +482,10 @@ function JournalBrowser() {
             setSearch(e.target.value);
             setPage(0);
           }}
-          placeholder="Search by keyword (e.g. cancer, breast, AI)"
+          placeholder="Type to search (e.g. cancer, breast, AI, lancet)"
           style={{ ...inputStyle, flex: 1, border: "1px solid #e2e5ea" }}
         />
-        {search && (
+        {hasSearch && (
           <button
             onClick={() => {
               setSearch("");
@@ -491,137 +508,161 @@ function JournalBrowser() {
         )}
       </div>
 
-      {/* Count */}
-      <div
-        style={{
-          fontSize: 12,
-          color: "#9ca3af",
-          marginBottom: 8,
-          textAlign: "center",
-        }}
-      >
-        {sorted.length.toLocaleString()} journal
-        {sorted.length !== 1 ? "s" : ""} found
-        {search.trim() ? ` for "${search.trim()}"` : ""} — sorted by IF
-      </div>
-
-      {/* Results table */}
-      {pageData.length > 0 && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid #e2e5ea",
-            borderRadius: 10,
-            overflow: "hidden",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-          }}
-        >
+      {/* Results only when searching */}
+      {hasSearch && (
+        <>
+          {/* Count */}
           <div
-            className="browse-grid"
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 60px 44px",
-              padding: "10px 16px",
-              background: "#f9fafb",
-              borderBottom: "1px solid #e2e5ea",
-              fontSize: 11,
+              fontSize: 12,
               color: "#9ca3af",
-              letterSpacing: 1.5,
-              fontWeight: 700,
+              marginBottom: 8,
+              textAlign: "center",
             }}
           >
-            <span>JOURNAL</span>
-            <span>IF</span>
-            <span>Q</span>
+            {sorted.length.toLocaleString()} journal
+            {sorted.length !== 1 ? "s" : ""} found for &ldquo;{search.trim()}
+            &rdquo; &mdash; sorted by IF
           </div>
-          {pageData.map((j, i) => {
-            const qc = Q_COLORS[j.q] || { color: "#6b7280" };
-            return (
+
+          {/* Results table */}
+          {pageData.length > 0 && (
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e5ea",
+                borderRadius: 10,
+                overflow: "hidden",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
               <div
-                key={`${j.name}-${j.cat}-${i}`}
                 className="browse-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 60px 44px",
-                  padding: "8px 16px",
-                  borderBottom: "1px solid #f0f1f4",
-                  fontSize: 13,
-                  alignItems: "center",
-                  transition: "background 0.1s",
+                  padding: "10px 16px",
+                  background: "#f9fafb",
+                  borderBottom: "1px solid #e2e5ea",
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  letterSpacing: 1.5,
+                  fontWeight: 700,
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "#f9fafb")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }
               >
-                <span
-                  style={{
-                    fontWeight: 500,
-                    color: "#111118",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {j.name}
-                </span>
-                <span style={{ fontWeight: 700, color: "#2563eb" }}>
-                  {j.if}
-                </span>
-                <span style={{ fontWeight: 700, fontSize: 12, color: qc.color }}>
-                  {j.q}
-                </span>
+                <span>JOURNAL</span>
+                <span>IF</span>
+                <span>Q</span>
               </div>
-            );
-          })}
-        </div>
-      )}
+              {pageData.map((j, i) => {
+                const qc = Q_COLORS[j.q] || { color: "#6b7280" };
+                return (
+                  <div
+                    key={`${j.name}-${j.cat}-${i}`}
+                    className="browse-grid"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 60px 44px",
+                      padding: "8px 16px",
+                      borderBottom: "1px solid #f0f1f4",
+                      fontSize: 13,
+                      alignItems: "center",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#f9fafb")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        color: "#111118",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {j.name}
+                    </span>
+                    <span style={{ fontWeight: 700, color: "#2563eb" }}>
+                      {j.if}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 12,
+                        color: qc.color,
+                      }}
+                    >
+                      {j.q}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 8,
-            marginTop: 10,
-            fontSize: 13,
-            color: "#6b7280",
-          }}
-        >
-          <button
-            onClick={() => setPage(Math.max(0, page - 1))}
-            disabled={page === 0}
-            style={{
-              ...inputStyle,
-              fontSize: 13,
-              padding: "6px 14px",
-              cursor: page > 0 ? "pointer" : "default",
-              opacity: page === 0 ? 0.4 : 1,
-            }}
-          >
-            Prev
-          </button>
-          <span>
-            {page + 1} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-            disabled={page >= totalPages - 1}
-            style={{
-              ...inputStyle,
-              fontSize: 13,
-              padding: "6px 14px",
-              cursor: page < totalPages - 1 ? "pointer" : "default",
-              opacity: page >= totalPages - 1 ? 0.4 : 1,
-            }}
-          >
-            Next
-          </button>
-        </div>
+          {sorted.length === 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                color: "#d1d5db",
+                fontSize: 14,
+                padding: "20px 0",
+              }}
+            >
+              No journals match &ldquo;{search.trim()}&rdquo;
+            </div>
+          )}
+
+          {/* Pagination — only if more than 5 results */}
+          {!showMax5 && totalPages > 1 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 10,
+                fontSize: 13,
+                color: "#6b7280",
+              }}
+            >
+              <button
+                onClick={() => setPage(Math.max(0, page - 1))}
+                disabled={page === 0}
+                style={{
+                  ...inputStyle,
+                  fontSize: 13,
+                  padding: "6px 14px",
+                  cursor: page > 0 ? "pointer" : "default",
+                  opacity: page === 0 ? 0.4 : 1,
+                }}
+              >
+                Prev
+              </button>
+              <span>
+                {page + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                disabled={page >= totalPages - 1}
+                style={{
+                  ...inputStyle,
+                  fontSize: 13,
+                  padding: "6px 14px",
+                  cursor: page < totalPages - 1 ? "pointer" : "default",
+                  opacity: page >= totalPages - 1 ? 0.4 : 1,
+                }}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
